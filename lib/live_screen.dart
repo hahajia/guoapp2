@@ -268,47 +268,9 @@ class _LiveScreenState extends State<LiveScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 预览图 - 用频道缩略图 + 直播中标签
+            // 实时预览 - 小播放器
             Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  channel.img.isNotEmpty
-                      ? Image.network(
-                          channel.img,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              Container(
-                                color: Colors.grey[200],
-                                child: const Icon(Icons.live_tv, size: 48),
-                              ),
-                        )
-                      : Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.live_tv, size: 48),
-                        ),
-                  // 直播中标签
-                  Positioned(
-                    top: 4,
-                    left: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '直播中',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: _LivePreview(url: channel.url),
             ),
             // 文字信息
             Padding(
@@ -422,6 +384,88 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
                 ? const CircularProgressIndicator()
                 : Video(controller: _controller),
       ),
+    );
+  }
+}
+
+/// 小的实时预览播放器
+class _LivePreview extends StatefulWidget {
+  final String url;
+
+  const _LivePreview({required this.url});
+
+  @override
+  State<_LivePreview> createState() => _LivePreviewState();
+}
+
+class _LivePreviewState extends State<_LivePreview> {
+  Player? _player;
+  VideoController? _controller;
+  bool _initialized = false;
+  bool _muted = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    try {
+      _player = Player();
+      _controller = VideoController(_player!);
+      await _player!.open(Media(widget.url));
+      await _player!.setVolume(0); // 静音
+      if (mounted) {
+        setState(() => _initialized = true);
+      }
+    } catch (_) {
+      // 加载失败就显示默认图标
+    }
+  }
+
+  @override
+  void dispose() {
+    _player?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized || _controller == null) {
+      return Container(
+        color: Colors.grey[200],
+        child: const Center(
+          child: Icon(Icons.live_tv, size: 48, color: Colors.grey),
+        ),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Video(_controller!),
+        // 直播中标签
+        Positioned(
+          top: 4,
+          left: 4,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              '直播中',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
