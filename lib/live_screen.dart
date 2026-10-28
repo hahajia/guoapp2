@@ -382,7 +382,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
               )
             : !_initialized
                 ? const CircularProgressIndicator()
-                : Video(_controller),
+                : Video(controller: _controller),
       ),
     );
   }
