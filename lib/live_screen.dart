@@ -416,6 +416,9 @@ class _LivePreviewState extends State<_LivePreview> {
       _controller = VideoController(_player!);
       await _player!.open(Media(widget.url));
       await _player!.setVolume(0); // 静音
+      // 等 1 秒让第一帧出来，然后暂停
+      await Future.delayed(const Duration(seconds: 1));
+      await _player!.pause();
       if (mounted) {
         setState(() => _initialized = true);
       }
