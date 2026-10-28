@@ -26,6 +26,7 @@ import 'remote_widgets.dart';
 import 'widgets.dart';
 import 'vip_icon.dart';
 import 'settings_screen.dart';
+import 'live_screen.dart';
 import 'profiles_screen.dart';
 import 'search_input.dart';
 import 'sources_screen.dart';
@@ -1018,6 +1019,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+              PullDownEntry(
+                label: '直播入口',
+                icon: Icons.live_tv,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LiveScreen()),
+                ),
+              ),
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
