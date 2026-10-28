@@ -1,3 +1,5 @@
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -300,6 +302,87 @@ class _LiveScreenState extends State<LiveScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 简单的直播播放页面
+class LivePlayerScreen extends StatefulWidget {
+  final String url;
+  final String title;
+
+  const LivePlayerScreen({
+    super.key,
+    required this.url,
+    required this.title,
+  });
+
+  @override
+  State<LivePlayerScreen> createState() => _LivePlayerScreenState();
+}
+
+class _LivePlayerScreenState extends State<LivePlayerScreen> {
+  late Player _player;
+  late VideoController _controller;
+  bool _initialized = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    try {
+      _player = Player();
+      _controller = VideoController(_player);
+      await _player.open(Media(widget.url));
+      if (mounted) {
+        setState(() => _initialized = true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = '播放失败: $e');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      body: Center(
+        child: _error != null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_error!),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _error = null;
+                        _initialized = false;
+                      });
+                      _initPlayer();
+                    },
+                    child: const Text('重试'),
+                  ),
+                ],
+              )
+            : !_initialized
+                ? const CircularProgressIndicator()
+                : Video(_controller),
       ),
     );
   }
