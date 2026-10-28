@@ -986,6 +986,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () => _moreAction('sources'),
                 ),
               PullDownEntry(
+                label: '直播入口',
+                icon: LucideIcons.tv,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LiveScreen()),
+                ),
+              ),
+              PullDownEntry(
                 label: '用户管理',
                 icon: LucideIcons.users,
                 dividerBefore:
@@ -1019,14 +1027,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-              PullDownEntry(
-                label: '直播入口',
-                icon: Icons.live_tv,
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LiveScreen()),
-                ),
-              ),
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
