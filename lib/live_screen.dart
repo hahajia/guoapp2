@@ -268,22 +268,47 @@ class _LiveScreenState extends State<LiveScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 预览图 - 用频道缩略图
+            // 预览图 - 用频道缩略图 + 直播中标签
             Expanded(
-              child: channel.img.isNotEmpty
-                  ? Image.network(
-                      channel.img,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          Container(
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.live_tv, size: 48),
-                          ),
-                    )
-                  : Container(
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.live_tv, size: 48),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  channel.img.isNotEmpty
+                      ? Image.network(
+                          channel.img,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              Container(
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.live_tv, size: 48),
+                              ),
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.live_tv, size: 48),
+                        ),
+                  // 直播中标签
+                  Positioned(
+                    top: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        '直播中',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
+                  ),
+                ],
+              ),
             ),
             // 文字信息
             Padding(
