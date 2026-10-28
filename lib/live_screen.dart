@@ -480,7 +480,7 @@ class _LivePreviewState extends State<_LivePreview> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Video(_controller!),
+        Video(controller: _controller!),
         // 直播中标签
         Positioned(
           top: 4,
