@@ -388,6 +388,38 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
   }
 }
 
+/// 全局预览加载队列，一个一个加载
+class _PreviewQueue {
+  static final _PreviewQueue _instance = _PreviewQueue._internal();
+  factory _PreviewQueue() => _instance;
+  _PreviewQueue._internal();
+
+  final List<void Function()> _queue = [];
+  bool _isLoading = false;
+  final Set<String> _loaded = {};
+
+  bool isLoaded(String url) => _loaded.contains(url);
+
+  void add(String url, void Function() onReady) {
+    if (_loaded.contains(url)) {
+      onReady();
+      return;
+    }
+    _queue.add(onReady);
+    _processNext();
+  }
+
+  Future<void> _processNext() async {
+    if (_isLoading || _queue.isEmpty) return;
+    _isLoading = true;
+    final task = _queue.removeAt(0);
+    await Future.delayed(const Duration(milliseconds: 500)); // 间隔 0.5 秒
+    task();
+    _isLoading = false;
+    _processNext();
+  }
+}
+
 /// 小的实时预览播放器
 class _LivePreview extends StatefulWidget {
   final String url;
@@ -402,15 +434,16 @@ class _LivePreviewState extends State<_LivePreview> {
   Player? _player;
   VideoController? _controller;
   bool _initialized = false;
-  bool _muted = true;
+  final _queue = _PreviewQueue();
 
   @override
   void initState() {
     super.initState();
-    _initPlayer();
+    _queue.add(widget.url, _initPlayer);
   }
 
   Future<void> _initPlayer() async {
+    if (!mounted) return;
     try {
       _player = Player();
       _controller = VideoController(_player!);
