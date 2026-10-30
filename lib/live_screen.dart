@@ -123,7 +123,7 @@ class _LiveScreenState extends State<LiveScreen> {
     return list
         .map((e) => LivePlatform.fromJson(e as Map<String, dynamic>))
         // 过滤掉指定的平台
-        .where((p) => p.title != '卫视直播' && p.title != '欧美MALE')
+        .where((p) => p.title != '卫视直播' && !p.title.startsWith('欧美'))
         .toList();
   }
 
