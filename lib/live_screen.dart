@@ -151,11 +151,7 @@ class _LiveScreenState extends State<LiveScreen> {
 
     for (final c in channels) {
       final key = _normalizeUrl(c.url);
-      if (key.isEmpty) {
-        // 无有效链接的频道不参与去重，直接保留
-        result.add(c);
-        continue;
-      }
+      if (key.isEmpty) continue;
 
       if (seen.add(key)) {
         result.add(c);
