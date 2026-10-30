@@ -1,7 +1,9 @@
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -330,6 +332,10 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
   late VideoController _controller;
   bool _initialized = false;
   String? _error;
+  bool _recording = false;
+  File? _recordFile;
+  Timer? _recordTimer;
+  int _recordSeconds = 0;
 
   @override
   void initState() {
@@ -352,10 +358,56 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
     }
   }
 
+  /// 开始或停止录制
+  Future<void> _toggleRecord() async {
+    if (_recording) {
+      // 停止录制
+      await _player.stopRecord();
+      _recordTimer?.cancel();
+      if (!mounted) return;
+      setState(() {
+        _recording = false;
+        _recordSeconds = 0;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('录制已保存: ${_recordFile?.path ?? ''}')),
+      );
+    } else {
+      // 开始录制
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final name = 'record_${DateTime.now().millisecondsSinceEpoch}.mkv';
+        _recordFile = File('${dir.path}/$name');
+        await _player.record(_recordFile!);
+        _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (mounted) {
+            setState(() => _recordSeconds++);
+          }
+        });
+        if (!mounted) return;
+        setState(() => _recording = true);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('录制失败: $e')),
+          );
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _recordTimer?.cancel();
     _player.dispose();
     super.dispose();
+  }
+
+  String _fmtTime(int s) {
+    final h = (s ~/ 3600).toString().padLeft(2, '0');
+    final m = ((s % 3600) ~/ 60).toString().padLeft(2, '0');
+    final sec = (s % 60).toString().padLeft(2, '0');
+    return h == '00' ? '$m:$sec' : '$h:$m:$sec';
   }
 
   @override
@@ -363,6 +415,17 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        actions: [
+          if (_initialized)
+            IconButton(
+              icon: _recording
+                  ? const Icon(Icons.stop, color: Colors.red, size: 32)
+                  : const Icon(Icons.fiber_manual_record,
+                      color: Colors.red, size: 28),
+              tooltip: _recording ? '停止录制' : '开始录制',
+              onPressed: _toggleRecord,
+            ),
+        ],
       ),
       body: Center(
         child: _error != null
@@ -385,7 +448,48 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
               )
             : !_initialized
                 ? const CircularProgressIndicator()
-                : Video(controller: _controller),
+                : Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Video(controller: _controller),
+                      // 录制指示器
+                      if (_recording)
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'REC ${_fmtTime(_recordSeconds)}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
       ),
     );
   }
