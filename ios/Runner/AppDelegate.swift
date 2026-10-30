@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import AVFoundation
 import DuanjuCore
 import CFNetwork
 
@@ -9,6 +10,13 @@ import CFNetwork
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // 配置音频会话为播放类别：锁屏/后台时保持播放，支持后台录制
+    do {
+      try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+      try AVAudioSession.sharedInstance().setActive(true)
+    } catch {
+      print("AVAudioSession 配置失败: \(error)")
+    }
     ZgjEnsureCoreLinked()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
