@@ -65,7 +65,7 @@ class LiveScreen extends StatefulWidget {
 }
 
 class _LiveScreenState extends State<LiveScreen> {
-  static const String _baseUrl = 'http://api.hclyz.com:81/mf/';
+  static const String _baseUrl = 'http://api.hclyz.com:81/mf';
 
   List<LivePlatform> _platforms = [];
   List<LiveChannel> _allChannels = [];
