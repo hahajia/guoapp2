@@ -119,6 +119,8 @@ class _LiveScreenState extends State<LiveScreen> {
 
     return list
         .map((e) => LivePlatform.fromJson(e as Map<String, dynamic>))
+        // 过滤掉指定的平台
+        .where((p) => p.title != '卫视直播' && p.title != '欧美MALE')
         .toList();
   }
 
@@ -237,7 +239,7 @@ class _LiveScreenState extends State<LiveScreen> {
             padding: const EdgeInsets.all(16),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              childAspectRatio: 0.8,
+              childAspectRatio: 0.6,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
