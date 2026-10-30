@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+// 直播整合功能 v2
 
 class LivePlatform {
   final String address;
