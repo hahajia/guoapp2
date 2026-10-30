@@ -1,6 +1,7 @@
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:ffmpeg_kit_flutter_new_min_gpl/ffmpeg_kit.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -336,6 +337,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
   File? _recordFile;
   Timer? _recordTimer;
   int _recordSeconds = 0;
+  FFmpegSession? _recordSession;
 
   @override
   void initState() {
@@ -362,7 +364,11 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
   Future<void> _toggleRecord() async {
     if (_recording) {
       // 停止录制
-      await _player.stopRecord();
+      final sessionId = _recordSession?.getSessionId();
+      if (sessionId != null) {
+        await FFmpegKit.cancel(sessionId);
+      }
+      _recordSession = null;
       _recordTimer?.cancel();
       if (!mounted) return;
       setState(() {
@@ -378,7 +384,10 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
         final dir = await getApplicationDocumentsDirectory();
         final name = 'record_${DateTime.now().millisecondsSinceEpoch}.mkv';
         _recordFile = File('${dir.path}/$name');
-        await _player.record(_recordFile!);
+        _recordSession = await FFmpegKit.executeAsync(
+          '-i "${widget.url}" -c copy -f matroska -y "${_recordFile!.path}"',
+          (session) {},
+        );
         _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
           if (mounted) {
             setState(() => _recordSeconds++);
