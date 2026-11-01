@@ -70,11 +70,20 @@ class _LiveScreenState extends State<LiveScreen> {
   String? _error;
   String _filter = '';
   int _previewTick = 0;
+  final Map<String, int> _cardTicks = {};
 
   /// 手动刷新所有预览（重新加载第一帧）
   void _refreshPreviews() {
     _PreviewQueue().clearLoaded();
     setState(() => _previewTick++);
+  }
+
+  /// 只刷新单个卡片的预览
+  void _refreshCard(LiveChannel channel) {
+    _PreviewQueue().unload(channel.url);
+    setState(() {
+      _cardTicks[channel.url] = (_cardTicks[channel.url] ?? 0) + 1;
+    });
   }
 
   @override
@@ -296,6 +305,7 @@ class _LiveScreenState extends State<LiveScreen> {
   }
 
   Widget _buildChannelCard(LiveChannel channel) {
+    final cardTick = _cardTicks[channel.url] ?? 0;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -311,32 +321,55 @@ class _LiveScreenState extends State<LiveScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 实时预览 - 小播放器，右上角可点录制
+            // 实时预览 - 小播放器，右上角可点录制/刷新
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   _LivePreview(
                     url: channel.url,
-                    key: ValueKey('$_previewTick-${channel.url}'),
+                    key: ValueKey('$_previewTick-$cardTick-${channel.url}'),
                   ),
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: GestureDetector(
-                      onTap: () => _quickRecord(channel),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 单独刷新这个卡的预览
+                        GestureDetector(
+                          onTap: () => _refreshCard(channel),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.refresh,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.fiber_manual_record,
-                          color: Colors.red,
-                          size: 20,
+                        const SizedBox(width: 4),
+                        // 录制
+                        GestureDetector(
+                          onTap: () => _quickRecord(channel),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.fiber_manual_record,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
@@ -560,6 +593,11 @@ class _PreviewQueue {
   /// 清空已加载缓存，用于手动刷新预览
   void clearLoaded() {
     _loaded.clear();
+  }
+
+  /// 清掉单个 url 的缓存，用于单卡刷新
+  void unload(String url) {
+    _loaded.remove(url);
   }
 
   void add(String url, void Function() onReady) {
