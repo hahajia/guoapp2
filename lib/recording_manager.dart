@@ -41,6 +41,11 @@ class RecordingManager {
       task.file = File('${dir.path}/$name');
       task.isRecording = true;
 
+      // 计时器先创建，任务结束时能正常取消
+      task._timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        task.seconds++;
+      });
+
       task.session = await FFmpegKit.executeAsync(
         '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 '
         '-rw_timeout 5000000 -i "${url}" -c copy -f matroska -y "${task.file!.path}"',
@@ -51,10 +56,6 @@ class RecordingManager {
           task._timer?.cancel();
         },
       );
-
-      task._timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        task.seconds++;
-      });
 
       tasks.add(task);
       return task;
@@ -152,7 +153,6 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
               itemBuilder: (context, index) {
                 final t = tasks[index];
                 final status = t.isRecording ? '录制中' : (t.isFinished ? '已结束' : '已停止');
-                final color = t.isRecording ? Colors.green : Colors.grey;
                 return ListTile(
                   leading: Icon(
                     t.isRecording ? Icons.fiber_manual_record : Icons.videocam_off,
