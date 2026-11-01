@@ -386,7 +386,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
         final name = 'record_${DateTime.now().millisecondsSinceEpoch}.mkv';
         _recordFile = File('${dir.path}/$name');
         _recordSession = await FFmpegKit.executeAsync(
-          '-i "${widget.url}" -c copy -f matroska -y "${_recordFile!.path}"',
+          '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 10000000 -i "${widget.url}" -c copy -f matroska -y "${_recordFile!.path}"',
           (session) {},
         );
         _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
