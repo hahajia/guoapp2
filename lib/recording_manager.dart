@@ -38,7 +38,9 @@ class RecordingManager {
       final id = 'rec${_seq++}_${DateTime.now().millisecondsSinceEpoch}';
       final task = RecordingTask(id, title, url);
       final dir = await getApplicationDocumentsDirectory();
-      final name = 'record_${DateTime.now().millisecondsSinceEpoch}.mkv';
+      // 文件名用主播名，加时间戳防止重名覆盖
+      final safeTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final name = '$safeTitle-${DateTime.now().millisecondsSinceEpoch}.mkv';
       task.file = File('${dir.path}/$name');
       task.isRecording = true;
 
