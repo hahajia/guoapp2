@@ -37,12 +37,31 @@ class RecordingManager {
     try {
       final id = 'rec${_seq++}_${DateTime.now().millisecondsSinceEpoch}';
       final task = RecordingTask(id, title, url);
+      await _launch(task);
+      tasks.add(task);
+      return task;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 重连：断开显示已结束后，重新录制同一个主播
+  Future<void> reconnect(RecordingTask task) async {
+    await _launch(task);
+  }
+
+  /// 真正启动录制（新任务和重连都走这里）
+  Future<void> _launch(RecordingTask task) async {
+    try {
       final dir = await getApplicationDocumentsDirectory();
       // 文件名用主播名，加时间戳防止重名覆盖
-      final safeTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final safeTitle = task.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final name = '$safeTitle-${DateTime.now().millisecondsSinceEpoch}.mkv';
       task.file = File('${dir.path}/$name');
       task.isRecording = true;
+      task.isFinished = false;
+      task.seconds = 0;
+      task.fileSize = 0;
 
       // 计时器先创建，任务结束时能正常取消
       task._timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -51,7 +70,7 @@ class RecordingManager {
 
       task.session = await FFmpegKit.executeAsync(
         '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 '
-        '-rw_timeout 5000000 -i "${url}" -c copy -f matroska -y "${task.file!.path}"',
+        '-rw_timeout 5000000 -i "${task.url}" -c copy -f matroska -y "${task.file!.path}"',
         (session) {
           // 任务结束（正常完成、出错或被取消）
           task.isRecording = false;
@@ -59,11 +78,9 @@ class RecordingManager {
           task._timer?.cancel();
         },
       );
-
-      tasks.add(task);
-      return task;
     } catch (_) {
-      return null;
+      task.isRecording = false;
+      task.isFinished = true;
     }
   }
 
@@ -194,6 +211,12 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                         IconButton(
                           icon: const Icon(Icons.stop, color: Colors.red),
                           onPressed: () => RecordingManager.instance.stop(t),
+                        )
+                      else if (t.isFinished)
+                        IconButton(
+                          icon: const Icon(Icons.refresh, color: Colors.blue),
+                          tooltip: '重连',
+                          onPressed: () => RecordingManager.instance.reconnect(t),
                         ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.grey),
