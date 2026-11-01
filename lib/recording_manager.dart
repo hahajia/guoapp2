@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:ffmpeg_kit_flutter_new_min_gpl/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new_min_gpl/ffmpeg_session.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// 单个录制任务
@@ -31,6 +32,39 @@ class RecordingManager {
 
   final List<RecordingTask> tasks = [];
   int _seq = 0;
+  Player? _keepAlivePlayer;
+
+  /// 有任务在录时，循环播放静音音频保持后台音频会话活跃（锁屏继续录制）
+  void _ensureKeepAlive() {
+    if (_keepAlivePlayer != null) return;
+    try {
+      _keepAlivePlayer = Player();
+      _keepAlivePlayer!.setVolume(0);
+      _keepAlivePlayer!.setPlaylistMode(PlaylistMode.loop);
+      _keepAlivePlayer!.open(
+        Media('asset:///assets/silent.wav'),
+        play: true,
+      );
+    } catch (_) {}
+  }
+
+  void _releaseKeepAlive() {
+    final p = _keepAlivePlayer;
+    _keepAlivePlayer = null;
+    try {
+      p?.dispose();
+    } catch (_) {}
+  }
+
+  /// 根据是否有任务在录，决定静音保活的启停
+  void _syncKeepAlive() {
+    final active = tasks.any((t) => t.isRecording);
+    if (active) {
+      _ensureKeepAlive();
+    } else {
+      _releaseKeepAlive();
+    }
+  }
 
   /// 启动一个录制任务
   Future<RecordingTask?> start(String title, String url) async {
@@ -62,6 +96,7 @@ class RecordingManager {
       task.isFinished = false;
       task.seconds = 0;
       task.fileSize = 0;
+      _syncKeepAlive();
 
       // 计时器先创建，任务结束时能正常取消
       task._timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -76,11 +111,13 @@ class RecordingManager {
           task.isRecording = false;
           task.isFinished = true;
           task._timer?.cancel();
+          _syncKeepAlive();
         },
       );
     } catch (_) {
       task.isRecording = false;
       task.isFinished = true;
+      _syncKeepAlive();
     }
   }
 
@@ -92,6 +129,7 @@ class RecordingManager {
     task.session = null;
     task.isRecording = false;
     task._timer?.cancel();
+    _syncKeepAlive();
   }
 
   /// 该链接当前是否有任务在录
@@ -124,6 +162,7 @@ class RecordingManager {
       await stop(task);
     }
     tasks.remove(task);
+    _syncKeepAlive();
   }
 }
 
