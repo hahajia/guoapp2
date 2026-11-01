@@ -1,14 +1,12 @@
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:ffmpeg_kit_flutter_new_min_gpl/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new_min_gpl/ffmpeg_session.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'recording_manager.dart';
 // 直播整合功能 v2
 
 class LivePlatform {
@@ -178,6 +176,17 @@ class _LiveScreenState extends State<LiveScreen> {
         title: const Text('整合频道'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.video_library),
+            tooltip: '录制进度',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const RecordingListScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loading ? null : _loadAll,
           ),
@@ -334,15 +343,19 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
   late VideoController _controller;
   bool _initialized = false;
   String? _error;
-  bool _recording = false;
-  File? _recordFile;
-  Timer? _recordTimer;
-  int _recordSeconds = 0;
-  FFmpegSession? _recordSession;
+  Timer? _refreshTimer;
+
+  bool get _recording => RecordingManager.instance.isRecording(widget.url);
+
+  int get _recordSeconds =>
+      RecordingManager.instance.activeTaskOf(widget.url)?.seconds ?? 0;
 
   @override
   void initState() {
     super.initState();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
     _initPlayer();
   }
 
@@ -361,54 +374,26 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
     }
   }
 
-  /// 开始或停止录制
-  Future<void> _toggleRecord() async {
+  /// 开始录制（停止请在录制进度页操作）
+  Future<void> _startRecord() async {
     if (_recording) {
-      // 停止录制
-      final sessionId = _recordSession?.getSessionId();
-      if (sessionId != null) {
-        await FFmpegKit.cancel(sessionId);
-      }
-      _recordSession = null;
-      _recordTimer?.cancel();
-      if (!mounted) return;
-      setState(() {
-        _recording = false;
-        _recordSeconds = 0;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('录制已保存: ${_recordFile?.path ?? ''}')),
+        const SnackBar(content: Text('该频道正在录制，请到录制进度页停止')),
       );
-    } else {
-      // 开始录制
-      try {
-        final dir = await getApplicationDocumentsDirectory();
-        final name = 'record_${DateTime.now().millisecondsSinceEpoch}.mkv';
-        _recordFile = File('${dir.path}/$name');
-        _recordSession = await FFmpegKit.executeAsync(
-          '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 5000000 -i "${widget.url}" -c copy -f matroska -y "${_recordFile!.path}"',
-          (session) {},
-        );
-        _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (mounted) {
-            setState(() => _recordSeconds++);
-          }
-        });
-        if (!mounted) return;
-        setState(() => _recording = true);
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('录制失败: $e')),
-          );
-        }
-      }
+      return;
     }
+    final task =
+        await RecordingManager.instance.start(widget.title, widget.url);
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(task != null ? '开始录制' : '录制启动失败')),
+    );
   }
 
   @override
   void dispose() {
-    _recordTimer?.cancel();
+    _refreshTimer?.cancel();
     _player.dispose();
     super.dispose();
   }
@@ -428,12 +413,13 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
         actions: [
           if (_initialized)
             IconButton(
-              icon: _recording
-                  ? const Icon(Icons.stop, color: Colors.red, size: 32)
-                  : const Icon(Icons.fiber_manual_record,
-                      color: Colors.red, size: 28),
-              tooltip: _recording ? '停止录制' : '开始录制',
-              onPressed: _toggleRecord,
+              icon: Icon(
+                Icons.fiber_manual_record,
+                color: Colors.red,
+                size: _recording ? 32 : 28,
+              ),
+              tooltip: _recording ? '录制中，请到录制进度页停止' : '开始录制',
+              onPressed: _startRecord,
             ),
         ],
       ),
