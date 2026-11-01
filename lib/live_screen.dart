@@ -268,6 +268,22 @@ class _LiveScreenState extends State<LiveScreen> {
     );
   }
 
+  /// 预览卡片快速录制
+  Future<void> _quickRecord(LiveChannel channel) async {
+    if (RecordingManager.instance.isRecording(channel.url)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('该频道正在录制，请到录制进度页停止')),
+      );
+      return;
+    }
+    final task =
+        await RecordingManager.instance.start(channel.name, channel.url);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(task != null ? '开始录制 ${channel.name}' : '录制启动失败')),
+    );
+  }
+
   Widget _buildChannelCard(LiveChannel channel) {
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -284,9 +300,33 @@ class _LiveScreenState extends State<LiveScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 实时预览 - 小播放器
+            // 实时预览 - 小播放器，右上角可点录制
             Expanded(
-              child: _LivePreview(url: channel.url),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _LivePreview(url: channel.url),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _quickRecord(channel),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.fiber_manual_record,
+                          color: Colors.red,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             // 文字信息
             Padding(
