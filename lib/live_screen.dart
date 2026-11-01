@@ -70,6 +70,13 @@ class _LiveScreenState extends State<LiveScreen> {
   bool _loading = true;
   String? _error;
   String _filter = '';
+  int _previewTick = 0;
+
+  /// 手动刷新所有预览（重新加载第一帧）
+  void _refreshPreviews() {
+    _PreviewQueue().clearLoaded();
+    setState(() => _previewTick++);
+  }
 
   @override
   void initState() {
@@ -185,6 +192,11 @@ class _LiveScreenState extends State<LiveScreen> {
                     builder: (_) => const RecordingListScreen()),
               );
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.autorenew),
+            tooltip: '刷新预览',
+            onPressed: _refreshPreviews,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -305,7 +317,10 @@ class _LiveScreenState extends State<LiveScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _LivePreview(url: channel.url),
+                  _LivePreview(
+                    url: channel.url,
+                    key: ValueKey('$_previewTick-${channel.url}'),
+                  ),
                   Positioned(
                     top: 4,
                     right: 4,
@@ -543,6 +558,11 @@ class _PreviewQueue {
 
   bool isLoaded(String url) => _loaded.contains(url);
 
+  /// 清空已加载缓存，用于手动刷新预览
+  void clearLoaded() {
+    _loaded.clear();
+  }
+
   void add(String url, void Function() onReady) {
     if (_loaded.contains(url)) {
       onReady();
@@ -567,7 +587,7 @@ class _PreviewQueue {
 class _LivePreview extends StatefulWidget {
   final String url;
 
-  const _LivePreview({required this.url});
+  const _LivePreview({super.key, required this.url});
 
   @override
   State<_LivePreview> createState() => _LivePreviewState();
