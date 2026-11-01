@@ -16,6 +16,7 @@ class RecordingTask {
   bool isRecording = false;
   bool isFinished = false;
   int seconds = 0;
+  int fileSize = 0;
   Timer? _timer;
 
   RecordingTask(this.id, this.title, this.url);
@@ -97,6 +98,19 @@ class RecordingManager {
     final task = await start(title, url);
     return task != null;
   }
+
+  /// 删除一条录制记录（停止 + 删文件 + 移除）
+  Future<void> remove(RecordingTask task) async {
+    if (task.isRecording) {
+      await stop(task);
+    }
+    try {
+      if (task.file != null && await task.file!.exists()) {
+        await task.file!.delete();
+      }
+    } catch (_) {}
+    tasks.remove(task);
+  }
 }
 
 String _fmtTime(int s) {
@@ -104,6 +118,12 @@ String _fmtTime(int s) {
   final m = ((s % 3600) ~/ 60).toString().padLeft(2, '0');
   final sec = (s % 60).toString().padLeft(2, '0');
   return h == '00' ? '$m:$sec' : '$h:$m:$sec';
+}
+
+String _fmtSize(int b) {
+  if (b >= 1024 * 1024) return '${(b / 1024 / 1024).toStringAsFixed(1)} MB';
+  if (b >= 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
+  return '$b B';
 }
 
 /// 录制进度界面：列出所有录制任务
@@ -120,7 +140,15 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
   @override
   void initState() {
     super.initState();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      // 刷新每个任务的文件大小（实时变化，确认还在录）
+      for (final t in RecordingManager.instance.tasks) {
+        if (t.file != null) {
+          try {
+            t.fileSize = await t.file!.length();
+          } catch (_) {}
+        }
+      }
       if (mounted) setState(() {});
     });
   }
@@ -160,15 +188,22 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                   ),
                   title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text(
-                    '$status · ${_fmtTime(t.seconds)}'
-                    '${t.filePath.isNotEmpty ? '\n${t.filePath}' : ''}',
+                    '$status · ${_fmtTime(t.seconds)} · ${_fmtSize(t.fileSize)}',
                   ),
-                  trailing: t.isRecording
-                      ? IconButton(
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (t.isRecording)
+                        IconButton(
                           icon: const Icon(Icons.stop, color: Colors.red),
                           onPressed: () => RecordingManager.instance.stop(t),
-                        )
-                      : const Icon(Icons.check_circle, color: Colors.grey),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                        onPressed: () => RecordingManager.instance.remove(t),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
