@@ -39,7 +39,6 @@ class RecordingManager {
     if (_keepAlivePlayer != null) return;
     try {
       _keepAlivePlayer = Player();
-      _keepAlivePlayer!.setVolume(0);
       _keepAlivePlayer!.setPlaylistMode(PlaylistMode.loop);
       _keepAlivePlayer!.open(
         Media('asset:///assets/silent.wav'),
@@ -96,7 +95,9 @@ class RecordingManager {
       task.isFinished = false;
       task.seconds = 0;
       task.fileSize = 0;
-      _syncKeepAlive();
+      // 进入录制即启动保活（首次 start 时 task 还没加入 tasks 列表，
+      // 不能用 _syncKeepAlive 判断，直接确保播放器已启动）
+      _ensureKeepAlive();
 
       // 计时器先创建，任务结束时能正常取消
       task._timer = Timer.periodic(const Duration(seconds: 1), (_) {
