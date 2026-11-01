@@ -99,16 +99,11 @@ class RecordingManager {
     return task != null;
   }
 
-  /// 删除一条录制记录（停止 + 删文件 + 移除）
+  /// 删除一条录制记录（只移出列表，文件保留）
   Future<void> remove(RecordingTask task) async {
     if (task.isRecording) {
       await stop(task);
     }
-    try {
-      if (task.file != null && await task.file!.exists()) {
-        await task.file!.delete();
-      }
-    } catch (_) {}
     tasks.remove(task);
   }
 }
